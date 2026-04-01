@@ -47,7 +47,9 @@ func (m *Manager) processNext(ctx context.Context, workerID int) {
 		if !claimable {
 			continue
 		}
-		if !m.claim(dl.ID) {
+		dlCtx, dlCancel := context.WithCancel(ctx)
+		if !m.claim(dl.ID, dlCancel) {
+			dlCancel()
 			continue
 		}
 		if dl.Status == store.StatusPending {
@@ -55,7 +57,8 @@ func (m *Manager) processNext(ctx context.Context, workerID int) {
 		} else {
 			log.Printf("worker %d: retrying failed download %s (%s), attempt %d", workerID, dl.ID, dl.PID, dl.RetryCount+1)
 		}
-		m.processDownload(ctx, dl)
+		m.processDownload(dlCtx, dl)
+		dlCancel()
 		m.release(dl.ID)
 		return
 	}
@@ -204,6 +207,14 @@ func (m *Manager) failDownload(dl *store.Download, code string, err error) {
 	if storeErr := m.store.PutDownload(dl); storeErr != nil {
 		log.Printf("store failDownload: %v", storeErr)
 	}
+
+	// Non-retryable failures move to history so the frontend can display them
+	if !dl.Retryable {
+		dl.CompletedAt = time.Now()
+		m.store.PutDownload(dl)
+		m.store.MoveToHistory(dl.ID)
+	}
+
 	m.broadcast("download:failed", dl)
 	log.Printf("download %s failed (%s): %v [retry=%v count=%d]", dl.ID, code, err, dl.Retryable, dl.RetryCount)
 }
@@ -242,13 +253,13 @@ func (m *Manager) broadcast(eventType string, dl *store.Download) {
 
 // claim attempts to reserve a download for this worker. Returns false if
 // another worker has already claimed it, preventing duplicate processing.
-func (m *Manager) claim(id string) bool {
+func (m *Manager) claim(id string, cancel context.CancelFunc) bool {
 	m.claimMu.Lock()
 	defer m.claimMu.Unlock()
 	if _, ok := m.claimed[id]; ok {
 		return false
 	}
-	m.claimed[id] = struct{}{}
+	m.claimed[id] = cancel
 	return true
 }
 

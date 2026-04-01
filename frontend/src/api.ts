@@ -12,7 +12,6 @@ function getApiKey(): string {
 
 function buildURL(path: string, params?: Record<string, string>): string {
   const url = new URL(path, window.location.origin);
-  url.searchParams.set("apikey", getApiKey());
   if (params) {
     for (const [k, v] of Object.entries(params)) {
       url.searchParams.set(k, v);
@@ -27,9 +26,17 @@ async function request<T>(
   body?: unknown,
   params?: Record<string, string>,
 ): Promise<T> {
+  const headers: Record<string, string> = {};
+  const key = getApiKey();
+  if (key) {
+    headers["Authorization"] = `Bearer ${key}`;
+  }
+  if (body) {
+    headers["Content-Type"] = "application/json";
+  }
   const res = await fetch(buildURL(path, params), {
     method,
-    headers: body ? { "Content-Type": "application/json" } : undefined,
+    headers,
     body: body ? JSON.stringify(body) : undefined,
   });
   if (!res.ok) {

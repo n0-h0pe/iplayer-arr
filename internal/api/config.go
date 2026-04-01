@@ -38,8 +38,9 @@ func (h *Handler) handlePutConfig(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "key is required"})
 		return
 	}
-	if req.Key == "api_key" {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "cannot change api_key via API"})
+	readOnly := map[string]bool{"api_key": true, "max_workers": true, "download_dir": true}
+	if readOnly[req.Key] {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": req.Key + " is read-only (set via environment variable)"})
 		return
 	}
 

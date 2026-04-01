@@ -31,7 +31,7 @@ type Manager struct {
 
 	cancel  context.CancelFunc
 	wg      sync.WaitGroup
-	claimed map[string]struct{}
+	claimed map[string]context.CancelFunc
 	claimMu sync.Mutex
 }
 
@@ -46,7 +46,7 @@ func NewManager(st *store.Store, downloadDir string, maxWorkers int,
 		playlist:    playlist,
 		ms:          ms,
 		hub:         hub,
-		claimed:     make(map[string]struct{}),
+		claimed:     make(map[string]context.CancelFunc),
 	}
 }
 
@@ -85,7 +85,11 @@ func (m *Manager) Enqueue(pid, quality, title, category string) (string, error) 
 	}
 
 	id := generateNzoID()
-	outputDir := filepath.Join(m.downloadDir, title)
+	safeTitle := sanitiseFilename(filepath.Base(title))
+	if safeTitle == "" || safeTitle == "." || safeTitle == ".." {
+		safeTitle = pid
+	}
+	outputDir := filepath.Join(m.downloadDir, safeTitle)
 
 	dl := &store.Download{
 		ID:        id,
@@ -106,6 +110,12 @@ func (m *Manager) Enqueue(pid, quality, title, category string) (string, error) 
 }
 
 func (m *Manager) CancelDownload(nzoID string) error {
+	// If a worker is processing this download, cancel its context to kill ffmpeg
+	m.claimMu.Lock()
+	if cancel, ok := m.claimed[nzoID]; ok {
+		cancel()
+	}
+	m.claimMu.Unlock()
 	m.store.DeleteDownload(nzoID)
 	return nil
 }
