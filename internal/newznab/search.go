@@ -13,10 +13,14 @@ import (
 )
 
 func (h *Handler) handleSearch(w http.ResponseWriter, r *http.Request) {
-	q := r.URL.Query().Get("q")
-	if q == "" || h.ibl == nil {
+	if h.ibl == nil {
 		writeEmptyRSS(w)
 		return
+	}
+
+	q := r.URL.Query().Get("q")
+	if q == "" {
+		q = "BBC" // default query for RSS feed and Sonarr test
 	}
 
 	results, err := h.ibl.Search(q, 1)
@@ -41,9 +45,12 @@ func (h *Handler) handleTVSearch(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if q == "" || h.ibl == nil {
+	if h.ibl == nil {
 		writeEmptyRSS(w)
 		return
+	}
+	if q == "" {
+		q = "BBC"
 	}
 
 	results, err := h.ibl.Search(q, 1)
