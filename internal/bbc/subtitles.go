@@ -28,8 +28,12 @@ type ttDoc struct {
 // BBC TTML may use period-based timing (HH:MM:SS.mmm) or frame-based timing
 // (HH:MM:SS:FF at 25fps). Text may be wrapped in <span> elements.
 func TTMLToSRT(ttml []byte) ([]byte, error) {
+	// Strip XML default namespaces -- Go's encoding/xml silently fails to match
+	// child elements when a default namespace propagates from the root.
+	cleaned := reXMLNS.ReplaceAll(ttml, nil)
+
 	var doc ttDoc
-	if err := xml.Unmarshal(ttml, &doc); err != nil {
+	if err := xml.Unmarshal(cleaned, &doc); err != nil {
 		return nil, fmt.Errorf("parse TTML: %w", err)
 	}
 
@@ -64,7 +68,10 @@ func TTMLToSRT(ttml []byte) ([]byte, error) {
 	return []byte(b.String()), nil
 }
 
-var reHTMLTag = regexp.MustCompile(`<[^>]+>`)
+var (
+	reHTMLTag = regexp.MustCompile(`<[^>]+>`)
+	reXMLNS   = regexp.MustCompile(`\s+xmlns(?::\w+)?="[^"]*"`)
+)
 
 func stripTags(s string) string {
 	return reHTMLTag.ReplaceAllString(s, "")

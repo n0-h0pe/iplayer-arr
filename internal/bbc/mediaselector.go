@@ -109,7 +109,7 @@ func (ms *MediaSelector) Resolve(vpid string) (*StreamSet, error) {
 
 func (ms *MediaSelector) parseResponse(body []byte) (*StreamSet, error) {
 	bodyStr := string(body)
-	if strings.Contains(bodyStr, "geolocation") || strings.Contains(bodyStr, "notukerror") {
+	if strings.Contains(bodyStr, "geolocation") || strings.Contains(bodyStr, `id="notuk"`) {
 		return nil, errGeoBlocked
 	}
 	if strings.Contains(bodyStr, "selectionunavailable") {
@@ -146,15 +146,15 @@ func (ms *MediaSelector) parseResponse(body []byte) (*StreamSet, error) {
 				continue
 			}
 
+			if c.Protocol != "https" {
+				continue
+			}
+
 			dedupKey := fmt.Sprintf("%d-%d-%s", m.Height, m.Bitrate, c.Supplier)
 			if seen[dedupKey] {
 				continue
 			}
 			seen[dedupKey] = true
-
-			if c.Protocol != "https" {
-				continue
-			}
 
 			result.Video = append(result.Video, VideoStream{
 				URL:      c.Href,

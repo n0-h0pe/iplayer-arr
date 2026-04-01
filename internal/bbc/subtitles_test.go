@@ -24,6 +24,28 @@ func TestTTMLToSRT(t *testing.T) {
 	}
 }
 
+func TestTTMLToSRTFrameBased(t *testing.T) {
+	ttml := `<?xml version="1.0"?>
+<tt xmlns="http://www.w3.org/ns/ttml">
+  <body>
+    <div>
+      <p begin="00:01:30:12" end="00:01:33:00">Frame-based timing.</p>
+    </div>
+  </body>
+</tt>`
+
+	srt, err := TTMLToSRT([]byte(ttml))
+	if err != nil {
+		t.Fatalf("TTMLToSRT: %v", err)
+	}
+
+	// 12 frames at 25fps = 480ms
+	expected := "1\n00:01:30,480 --> 00:01:33,000\nFrame-based timing.\n\n"
+	if string(srt) != expected {
+		t.Errorf("SRT output:\n%s\nwant:\n%s", srt, expected)
+	}
+}
+
 func TestTTMLToSRTEmpty(t *testing.T) {
 	ttml := `<?xml version="1.0"?><tt xmlns="http://www.w3.org/ns/ttml"><body><div></div></body></tt>`
 	srt, err := TTMLToSRT([]byte(ttml))

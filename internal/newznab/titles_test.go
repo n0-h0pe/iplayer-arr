@@ -123,6 +123,25 @@ func TestGenerateTitleForceDateBased(t *testing.T) {
 	}
 }
 
+func TestGenerateTitleForcePosition(t *testing.T) {
+	p := &store.Programme{
+		Name:       "Newsnight",
+		Episode:    "Budget Analysis",
+		Series:     2,
+		EpisodeNum: 15,
+		Position:   3,
+	}
+	override := &store.ShowOverride{ForcePosition: true}
+	title, tier := GenerateTitle(p, "720p", override)
+	if tier != store.TierPosition {
+		t.Errorf("tier = %q, want position", tier)
+	}
+	expected := "Newsnight.S01E03.Budget.Analysis.720p.WEB-DL.AAC.H264-iParr"
+	if title != expected {
+		t.Errorf("title = %q\nwant  = %q", title, expected)
+	}
+}
+
 func TestSanitiseTitle(t *testing.T) {
 	tests := []struct {
 		in, want string
