@@ -78,6 +78,9 @@ func RunFFmpeg(ctx context.Context, job FFmpegJob) error {
 			job.OnProgress(prog)
 		}
 	}
+	if scanErr := scanner.Err(); scanErr != nil {
+		return fmt.Errorf("reading ffmpeg stderr: %w", scanErr)
+	}
 
 	if err := cmd.Wait(); err != nil {
 		return fmt.Errorf("ffmpeg: %w", err)

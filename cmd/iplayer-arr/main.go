@@ -74,7 +74,7 @@ func main() {
 
 	go func() {
 		log.Printf("iplayer-arr listening on :%s", port)
-		log.Printf("API key: %s", apiKey)
+		log.Printf("API key: %s...%s", apiKey[:4], apiKey[len(apiKey)-4:])
 		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
 			log.Fatalf("listen: %v", err)
 		}

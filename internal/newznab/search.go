@@ -2,6 +2,7 @@ package newznab
 
 import (
 	"fmt"
+	"html"
 	"net/http"
 	"strconv"
 	"strings"
@@ -110,7 +111,7 @@ func (h *Handler) writeResultsRSS(w http.ResponseWriter, r *http.Request, result
       <enclosure url="%s/newznab/api?t=get&amp;id=%s" length="%d" type="application/x-nzb" />
       <newznab:attr name="category" value="%s" />
       <newznab:attr name="size" value="%d" />`,
-				title, baseURL(r), guid, baseURL(r), guid, pubDate,
+				html.EscapeString(title), baseURL(r), guid, baseURL(r), guid, pubDate,
 				baseURL(r), guid, size, cat, size)
 
 			if tier == store.TierManual {
