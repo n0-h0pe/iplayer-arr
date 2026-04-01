@@ -1,0 +1,109 @@
+import { createSignal, For, Show } from "solid-js";
+import type { SearchResult } from "../types";
+import { api } from "../api";
+
+export default function Search() {
+  const [query, setQuery] = createSignal("");
+  const [results, setResults] = createSignal<SearchResult[]>([]);
+  const [loading, setLoading] = createSignal(false);
+  const [selectedQuality, setSelectedQuality] = createSignal<Record<string, string>>({});
+
+  let debounceTimer: number;
+
+  function onInput(e: InputEvent) {
+    const val = (e.target as HTMLInputElement).value;
+    setQuery(val);
+    clearTimeout(debounceTimer);
+    if (val.length < 2) { setResults([]); return; }
+    debounceTimer = window.setTimeout(async () => {
+      setLoading(true);
+      try {
+        const res = await api.search(val);
+        setResults(res || []);
+      } catch { setResults([]); }
+      setLoading(false);
+    }, 300);
+  }
+
+  async function startDownload(r: SearchResult) {
+    const quality = selectedQuality()[r.PID] || "720p";
+    await api.manualDownload(r.PID, quality, r.Title, "sonarr");
+  }
+
+  function qualityFor(pid: string) {
+    return selectedQuality()[pid] || "720p";
+  }
+
+  function setQuality(pid: string, val: string) {
+    setSelectedQuality(prev => ({ ...prev, [pid]: val }));
+  }
+
+  function tierClass(r: SearchResult): string {
+    if (r.Series > 0 && r.EpisodeNum > 0) return "badge-completed";
+    if (r.Position > 0) return "badge-downloading";
+    if (r.AirDate) return "badge-resolving";
+    return "badge-pending";
+  }
+
+  function tierLabel(r: SearchResult): string {
+    if (r.Series > 0 && r.EpisodeNum > 0) return `S${String(r.Series).padStart(2, "0")}E${String(r.EpisodeNum).padStart(2, "0")}`;
+    if (r.Position > 0) return `Pos ${r.Position}`;
+    if (r.AirDate) return r.AirDate;
+    return "Manual";
+  }
+
+  return (
+    <div>
+      <div class="card">
+        <div class="card-header">Search BBC iPlayer</div>
+        <div class="card-body">
+          <input
+            class="input"
+            type="text"
+            placeholder="Search for a programme..."
+            value={query()}
+            onInput={onInput}
+          />
+        </div>
+      </div>
+
+      <Show when={loading()}>
+        <p class="text-muted" style="padding:8px 0">Searching...</p>
+      </Show>
+
+      <For each={results()}>{r => (
+        <div class="card">
+          <div class="card-body" style="display:flex;gap:16px;align-items:flex-start">
+            <Show when={r.Thumbnail}>
+              <img src={r.Thumbnail} alt="" style="width:120px;border-radius:4px;flex-shrink:0" />
+            </Show>
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:600;font-size:14px">{r.Title}</div>
+              <div class="text-secondary" style="font-size:13px;margin-top:2px">{r.Subtitle}</div>
+              <div style="margin-top:6px">
+                <span class={`badge ${tierClass(r)}`}>{tierLabel(r)}</span>
+                <Show when={r.Channel}>
+                  <span class="badge" style="background:var(--accent);color:#fff;margin-left:6px">{r.Channel}</span>
+                </Show>
+              </div>
+              <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+                <select class="input" style="width:auto" value={qualityFor(r.PID)} onChange={e => setQuality(r.PID, e.target.value)}>
+                  <option value="720p">720p</option>
+                  <option value="540p">540p</option>
+                  <option value="396p">396p</option>
+                </select>
+                <button class="btn btn-primary btn-sm" onClick={() => startDownload(r)}>Download</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}</For>
+
+      <Show when={!loading() && query().length >= 2 && results().length === 0}>
+        <div class="card">
+          <div class="card-empty">No results found</div>
+        </div>
+      </Show>
+    </div>
+  );
+}
