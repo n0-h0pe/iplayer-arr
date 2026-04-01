@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestOpenClose(t *testing.T) {
@@ -116,5 +117,115 @@ func TestDownloadFindByPIDQuality(t *testing.T) {
 	found, _ = s.FindDownloadByPIDQuality("b039d07m", "1080p")
 	if found != nil {
 		t.Error("expected nil for different quality")
+	}
+}
+
+func TestHistoryCRUD(t *testing.T) {
+	s := testStore(t)
+
+	dl := &Download{ID: "iparr_h1", PID: "test123", Status: StatusCompleted}
+	s.PutDownload(dl)
+	if err := s.MoveToHistory("iparr_h1"); err != nil {
+		t.Fatalf("MoveToHistory: %v", err)
+	}
+
+	got, _ := s.GetDownload("iparr_h1")
+	if got != nil {
+		t.Error("download should be gone from downloads bucket")
+	}
+
+	hist, err := s.GetHistory("iparr_h1")
+	if err != nil || hist == nil {
+		t.Fatalf("GetHistory: err=%v, hist=%v", err, hist)
+	}
+	if hist.PID != "test123" {
+		t.Errorf("PID = %q, want test123", hist.PID)
+	}
+
+	all, _ := s.ListHistory()
+	if len(all) != 1 {
+		t.Errorf("ListHistory len = %d, want 1", len(all))
+	}
+
+	s.DeleteHistory("iparr_h1")
+	hist, _ = s.GetHistory("iparr_h1")
+	if hist != nil {
+		t.Error("expected nil after delete")
+	}
+}
+
+func TestProgrammeCache(t *testing.T) {
+	s := testStore(t)
+
+	p := &Programme{
+		PID:      "b039d07m",
+		Name:     "Doctor Who",
+		Episode:  "The Unquiet Dead",
+		CachedAt: time.Now(),
+	}
+	s.PutProgramme(p)
+
+	got, _ := s.GetProgramme("b039d07m")
+	if got == nil || got.Name != "Doctor Who" {
+		t.Errorf("GetProgramme = %v", got)
+	}
+
+	s.DeleteProgramme("b039d07m")
+	got, _ = s.GetProgramme("b039d07m")
+	if got != nil {
+		t.Error("expected nil after delete")
+	}
+}
+
+func TestConfig(t *testing.T) {
+	s := testStore(t)
+
+	s.SetConfig("api_key", "test-key-123")
+	val, _ := s.GetConfig("api_key")
+	if val != "test-key-123" {
+		t.Errorf("GetConfig = %q", val)
+	}
+
+	val, _ = s.GetConfig("nonexistent")
+	if val != "" {
+		t.Errorf("expected empty for nonexistent, got %q", val)
+	}
+}
+
+func TestSeriesMapping(t *testing.T) {
+	s := testStore(t)
+
+	m := &SeriesMapping{TVDBId: "78804", ShowName: "Doctor Who"}
+	s.PutSeriesMapping(m)
+
+	got, _ := s.GetSeriesMapping("78804")
+	if got == nil || got.ShowName != "Doctor Who" {
+		t.Errorf("GetSeriesMapping = %v", got)
+	}
+}
+
+func TestOverrides(t *testing.T) {
+	s := testStore(t)
+
+	o := &ShowOverride{
+		ShowName:       "blue peter",
+		ForceSeriesNum: 1,
+	}
+	s.PutOverride(o)
+
+	got, _ := s.GetOverride("blue peter")
+	if got == nil || got.ForceSeriesNum != 1 {
+		t.Errorf("GetOverride = %v", got)
+	}
+
+	all, _ := s.ListOverrides()
+	if len(all) != 1 {
+		t.Errorf("ListOverrides len = %d", len(all))
+	}
+
+	s.DeleteOverride("blue peter")
+	got, _ = s.GetOverride("blue peter")
+	if got != nil {
+		t.Error("expected nil after delete")
 	}
 }
