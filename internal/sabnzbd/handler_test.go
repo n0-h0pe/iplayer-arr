@@ -1,0 +1,110 @@
+package sabnzbd
+
+import (
+	"encoding/json"
+	"net/http/httptest"
+	"path/filepath"
+	"testing"
+
+	"github.com/GiteaLN/iplayer-arr/internal/store"
+)
+
+func testHandler(t *testing.T) (*Handler, *store.Store) {
+	t.Helper()
+	dir := t.TempDir()
+	st, err := store.Open(filepath.Join(dir, "test.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	st.SetConfig("api_key", "test-key")
+	t.Cleanup(func() { st.Close() })
+	h := NewHandler(st, nil)
+	return h, st
+}
+
+func TestVersionNoAuth(t *testing.T) {
+	h, _ := testHandler(t)
+	req := httptest.NewRequest("GET", "/sabnzbd/api?mode=version", nil)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != 200 {
+		t.Fatalf("status = %d", w.Code)
+	}
+	if w.Body.String() != "4.0.0" {
+		t.Errorf("version = %q", w.Body.String())
+	}
+}
+
+func TestAuthRequired(t *testing.T) {
+	h, _ := testHandler(t)
+	req := httptest.NewRequest("GET", "/sabnzbd/api?mode=queue", nil)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != 200 {
+		t.Fatalf("status = %d", w.Code)
+	}
+	var resp map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	if resp["status"] != false {
+		t.Error("expected auth failure")
+	}
+}
+
+func TestQueueEmpty(t *testing.T) {
+	h, _ := testHandler(t)
+	req := httptest.NewRequest("GET", "/sabnzbd/api?mode=queue&apikey=test-key", nil)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	var resp struct {
+		Queue struct {
+			Slots []interface{} `json:"slots"`
+		} `json:"queue"`
+	}
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	if len(resp.Queue.Slots) != 0 {
+		t.Errorf("expected empty queue, got %d slots", len(resp.Queue.Slots))
+	}
+}
+
+func TestHistoryWithDownload(t *testing.T) {
+	h, st := testHandler(t)
+
+	dl := &store.Download{
+		ID:        "iparr_test1",
+		Title:     "Test.Show.S01E01",
+		Status:    store.StatusCompleted,
+		OutputDir: "/downloads/Test.Show.S01E01/",
+		Size:      1024000,
+	}
+	st.PutDownload(dl)
+	st.MoveToHistory("iparr_test1")
+
+	req := httptest.NewRequest("GET", "/sabnzbd/api?mode=history&apikey=test-key", nil)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	var resp struct {
+		History struct {
+			Slots []struct {
+				NzoID   string `json:"nzo_id"`
+				Name    string `json:"name"`
+				Status  string `json:"status"`
+				Storage string `json:"storage"`
+			} `json:"slots"`
+		} `json:"history"`
+	}
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	if len(resp.History.Slots) != 1 {
+		t.Fatalf("expected 1 history slot, got %d", len(resp.History.Slots))
+	}
+	slot := resp.History.Slots[0]
+	if slot.NzoID != "iparr_test1" {
+		t.Errorf("nzo_id = %q", slot.NzoID)
+	}
+	if slot.Storage != "/downloads/Test.Show.S01E01/" {
+		t.Errorf("storage = %q", slot.Storage)
+	}
+}
