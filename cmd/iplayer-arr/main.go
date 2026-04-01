@@ -66,10 +66,28 @@ func main() {
 	workerCtx, workerCancel := context.WithCancel(context.Background())
 	mgr.Start(workerCtx)
 
+	// Geo-probe: check if BBC content is accessible
+	geoOK := false
+	bbcStatus, geoErr := bbcClient.Head("https://open.live.bbc.co.uk/mediaselector/6/select/version/2.0/mediaset/pc/vpid/bbc_one_hd/format/xml")
+	if geoErr != nil {
+		log.Printf("WARNING: geo-probe failed: %v", geoErr)
+	} else if bbcStatus == 200 {
+		geoOK = true
+		log.Println("geo-probe: UK access confirmed")
+	} else if bbcStatus == 403 {
+		log.Println("WARNING: geo-blocked -- BBC iPlayer content unavailable without a UK connection")
+	} else {
+		log.Printf("geo-probe: unexpected status %d", bbcStatus)
+	}
+
+	if err := os.MkdirAll(downloadDir, 0755); err != nil {
+		log.Printf("WARNING: cannot create download dir %s: %v", downloadDir, err)
+	}
+
 	// http routing
 	runtimeStatus := &api.RuntimeStatus{
 		FFmpegVersion: ffVer,
-		GeoOK:         true,
+		GeoOK:         geoOK,
 	}
 	apiHandler := api.NewHandler(st, hub, mgr, ibl, runtimeStatus)
 
