@@ -18,6 +18,7 @@ import (
 	"github.com/GiteaLN/iplayer-arr/internal/newznab"
 	"github.com/GiteaLN/iplayer-arr/internal/sabnzbd"
 	"github.com/GiteaLN/iplayer-arr/internal/store"
+	"github.com/GiteaLN/iplayer-arr/internal/web"
 )
 
 func main() {
@@ -80,6 +81,9 @@ func main() {
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("ok"))
 	})
+
+	// Must be last -- catch-all for SPA routing
+	mux.Handle("/", web.SPAHandler())
 
 	srv := &http.Server{
 		Addr:    ":" + port,

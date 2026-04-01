@@ -1,6 +1,8 @@
 /iplayer-arr
 /frontend/node_modules/
 /frontend/dist/
+/internal/web/dist/*
+!/internal/web/dist/.gitkeep
 *.db
 *.partial.mp4
 .DS_Store
