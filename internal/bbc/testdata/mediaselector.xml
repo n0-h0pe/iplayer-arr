@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mediaSelection xmlns="http://bbc.co.uk/2008/mp/mediaselection">
+  <media kind="video" type="video/mp4" encoding="h264" bitrate="5070" width="1280" height="720">
+    <connection supplier="akamai_hls_open" transferFormat="hls" protocol="https"
+      href="https://example.com/hls/720p/master.m3u8?s=abc&amp;e=123" />
+  </media>
+  <media kind="video" type="video/mp4" encoding="h264" bitrate="2500" width="960" height="540">
+    <connection supplier="akamai_hls_open" transferFormat="hls" protocol="https"
+      href="https://example.com/hls/540p/master.m3u8?s=abc&amp;e=123" />
+  </media>
+  <media kind="captions" type="application/ttaf+xml">
+    <connection supplier="akamai_hls_open" transferFormat="plain" protocol="https"
+      href="https://example.com/subs/captions.xml" />
+  </media>
+</mediaSelection>
