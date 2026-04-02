@@ -30,7 +30,7 @@ func NewHandler(st *store.Store, starter DownloadStarter) *Handler {
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	mode := r.URL.Query().Get("mode")
-	log.Printf("[sabnzbd] %s %s mode=%s", r.Method, r.URL.Path, mode)
+	log.Printf("[sabnzbd] %s %s mode=%s params=%s", r.Method, r.URL.Path, mode, r.URL.RawQuery)
 
 	switch mode {
 	case "version":
@@ -58,7 +58,15 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	case "fullstatus":
-		writeJSON(w, map[string]interface{}{"status": "idle"})
+		downloadDir, _ := h.store.GetConfig("download_dir")
+		if downloadDir == "" {
+			downloadDir = "/downloads"
+		}
+		writeJSON(w, map[string]interface{}{
+			"status": map[string]interface{}{
+				"completedir": downloadDir,
+			},
+		})
 		return
 	}
 
@@ -137,7 +145,7 @@ func (h *Handler) handleQueue(w http.ResponseWriter, r *http.Request) {
 		slots = []map[string]interface{}{}
 	}
 
-	writeJSON(w, map[string]interface{}{
+	resp := map[string]interface{}{
 		"queue": map[string]interface{}{
 			"status":    "Downloading",
 			"paused":    false,
@@ -146,7 +154,11 @@ func (h *Handler) handleQueue(w http.ResponseWriter, r *http.Request) {
 			"timeleft":  "0:00:00",
 			"slots":     slots,
 		},
-	})
+	}
+	for _, s := range slots {
+		log.Printf("[sabnzbd] queue slot: id=%s status=%s file=%q cat=%s", s["nzo_id"], s["status"], s["filename"], s["cat"])
+	}
+	writeJSON(w, resp)
 }
 
 func (h *Handler) handleHistory(w http.ResponseWriter, r *http.Request) {
@@ -186,7 +198,7 @@ func (h *Handler) handleHistory(w http.ResponseWriter, r *http.Request) {
 			"downloaded":    dl.Size,
 			"completed":     dl.CompletedAt.Unix(),
 			"download_time": int(dl.CompletedAt.Sub(dl.StartedAt).Seconds()),
-			"cat":           dl.Category,
+			"category":      dl.Category,
 			"fail_message":  dl.Error,
 			"action_line":   "",
 			"script":        "None",
@@ -197,6 +209,9 @@ func (h *Handler) handleHistory(w http.ResponseWriter, r *http.Request) {
 		slots = []map[string]interface{}{}
 	}
 
+	for _, s := range slots {
+		log.Printf("[sabnzbd] history slot: id=%s status=%s name=%q storage=%q category=%s", s["nzo_id"], s["status"], s["name"], s["storage"], s["category"])
+	}
 	writeJSON(w, map[string]interface{}{
 		"history": map[string]interface{}{
 			"slots": slots,
