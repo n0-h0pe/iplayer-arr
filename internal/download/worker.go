@@ -102,7 +102,11 @@ func (m *Manager) processDownload(ctx context.Context, dl *store.Download) {
 	}
 
 	// 3. Pick stream matching requested quality
+	for _, s := range streams.Video {
+		log.Printf("available stream: %dx%d %dkbps fmt=%s supplier=%s", s.Width, s.Height, s.Bitrate, s.Format, s.Supplier)
+	}
 	stream := pickStream(streams.Video, dl.Quality)
+	log.Printf("picked stream: %dx%d %dkbps fmt=%s (requested %s)", stream.Width, stream.Height, stream.Bitrate, stream.Format, dl.Quality)
 	dl.StreamURL = stream.URL
 	if err := m.store.PutDownload(dl); err != nil {
 		log.Printf("store update after stream pick: %v", err)
@@ -280,19 +284,26 @@ func (m *Manager) release(id string) {
 func pickStream(streams []bbc.VideoStream, quality string) bbc.VideoStream {
 	targetHeight := qualityToHeight(quality)
 
-	// Exact match first
+	// Prefer DASH for exact height match (DASH provides true 1080p; HLS caps at 720p)
+	for _, s := range streams {
+		if s.Height == targetHeight && s.Format == "dash" {
+			return s
+		}
+	}
+
+	// Fall back to any format with exact height match
 	for _, s := range streams {
 		if s.Height == targetHeight {
 			return s
 		}
 	}
 
-	// Closest match -- streams are sorted descending by height
+	// Closest match, preferring DASH
 	best := streams[0]
 	bestDiff := abs(best.Height - targetHeight)
 	for _, s := range streams[1:] {
 		diff := abs(s.Height - targetHeight)
-		if diff < bestDiff {
+		if diff < bestDiff || (diff == bestDiff && s.Format == "dash") {
 			best = s
 			bestDiff = diff
 		}

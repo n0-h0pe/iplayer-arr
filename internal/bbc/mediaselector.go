@@ -39,6 +39,7 @@ type VideoStream struct {
 	Bitrate  int
 	Supplier string
 	Protocol string
+	Format   string // "hls" or "dash"
 }
 
 // IsGeoBlocked reports whether err is a geo-block error from MediaSelector.
@@ -142,7 +143,7 @@ func (ms *MediaSelector) parseResponse(body []byte) (*StreamSet, error) {
 			if strings.Contains(c.Supplier, "vbidi") {
 				continue
 			}
-			if c.TransferFormat != "hls" {
+			if c.TransferFormat != "dash" && c.TransferFormat != "hls" {
 				continue
 			}
 
@@ -150,7 +151,7 @@ func (ms *MediaSelector) parseResponse(body []byte) (*StreamSet, error) {
 				continue
 			}
 
-			dedupKey := fmt.Sprintf("%d-%d-%s", m.Height, m.Bitrate, c.Supplier)
+			dedupKey := fmt.Sprintf("%d-%d-%s-%s", m.Height, m.Bitrate, c.Supplier, c.TransferFormat)
 			if seen[dedupKey] {
 				continue
 			}
@@ -163,6 +164,7 @@ func (ms *MediaSelector) parseResponse(body []byte) (*StreamSet, error) {
 				Bitrate:  m.Bitrate,
 				Supplier: c.Supplier,
 				Protocol: c.Protocol,
+				Format:   c.TransferFormat,
 			})
 		}
 	}

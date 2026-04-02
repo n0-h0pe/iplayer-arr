@@ -4,6 +4,9 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io"
+	"log"
+	"net/http"
 	"os/exec"
 	"regexp"
 	"strconv"
@@ -47,12 +50,70 @@ type FFmpegJob struct {
 	OnProgress func(FFmpegProgress)
 }
 
+// resolveHLSVariant fetches a master playlist and returns the URL of the
+// highest-bandwidth variant. If the URL is not a master playlist or fetching
+// fails, the original URL is returned unchanged.
+func resolveHLSVariant(masterURL string) string {
+	resp, err := http.Get(masterURL)
+	if err != nil {
+		return masterURL
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return masterURL
+	}
+
+	lines := strings.Split(string(body), "\n")
+	bestBW := 0
+	bestURL := ""
+	for i, line := range lines {
+		if !strings.HasPrefix(line, "#EXT-X-STREAM-INF:") {
+			continue
+		}
+		// Parse BANDWIDTH=N from the tag
+		for _, part := range strings.Split(line, ",") {
+			part = strings.TrimSpace(part)
+			if strings.HasPrefix(part, "BANDWIDTH=") {
+				bw, _ := strconv.Atoi(strings.TrimPrefix(part, "BANDWIDTH="))
+				if bw > bestBW && i+1 < len(lines) {
+					bestBW = bw
+					bestURL = strings.TrimSpace(lines[i+1])
+				}
+			}
+		}
+	}
+
+	if bestURL == "" {
+		return masterURL
+	}
+
+	// Variant URLs are usually relative to the master playlist
+	if !strings.HasPrefix(bestURL, "http") {
+		base := masterURL
+		if idx := strings.LastIndex(base, "/"); idx >= 0 {
+			base = base[:idx+1]
+		}
+		bestURL = base + bestURL
+	}
+
+	log.Printf("HLS variant selected: bandwidth=%d url=%s", bestBW, bestURL[:min(len(bestURL), 100)])
+	return bestURL
+}
+
 func RunFFmpeg(ctx context.Context, job FFmpegJob) error {
+	streamURL := job.StreamURL
+	// For HLS master playlists, resolve the highest-bandwidth variant
+	// since ffmpeg defaults to the first (lowest quality) variant.
+	// DASH manifests don't need this -- ffmpeg picks the highest quality automatically.
+	if strings.Contains(streamURL, ".m3u8") {
+		streamURL = resolveHLSVariant(streamURL)
+	}
 	args := []string{
 		"-loglevel", "fatal",
 		"-stats",
 		"-y",
-		"-i", job.StreamURL,
+		"-i", streamURL,
 		"-c:v", "copy",
 		"-c:a", "copy",
 		"-bsf:a", "aac_adtstoasc",
