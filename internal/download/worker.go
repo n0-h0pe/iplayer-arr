@@ -284,9 +284,10 @@ func (m *Manager) release(id string) {
 func pickStream(streams []bbc.VideoStream, quality string) bbc.VideoStream {
 	targetHeight := qualityToHeight(quality)
 
-	// Prefer DASH for exact height match (DASH provides true 1080p; HLS caps at 720p)
+	// Prefer HLS for exact height match -- our resolveHLSVariant can probe
+	// for unlisted 1080p variants that BBC hides from manifests.
 	for _, s := range streams {
-		if s.Height == targetHeight && s.Format == "dash" {
+		if s.Height == targetHeight && s.Format == "hls" {
 			return s
 		}
 	}
@@ -298,12 +299,12 @@ func pickStream(streams []bbc.VideoStream, quality string) bbc.VideoStream {
 		}
 	}
 
-	// Closest match, preferring DASH
+	// Closest match, preferring HLS
 	best := streams[0]
 	bestDiff := abs(best.Height - targetHeight)
 	for _, s := range streams[1:] {
 		diff := abs(s.Height - targetHeight)
-		if diff < bestDiff || (diff == bestDiff && s.Format == "dash") {
+		if diff < bestDiff || (diff == bestDiff && s.Format == "hls") {
 			best = s
 			bestDiff = diff
 		}

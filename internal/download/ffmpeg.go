@@ -13,6 +13,14 @@ import (
 	"strings"
 )
 
+// min returns the smaller of a and b.
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
 type FFmpegProgress struct {
 	TimeSeconds float64
 	SizeBytes   int64
@@ -50,51 +58,75 @@ type FFmpegJob struct {
 	OnProgress func(FFmpegProgress)
 }
 
-// resolveHLSVariant fetches a master playlist and returns the URL of the
-// highest-bandwidth variant. If the URL is not a master playlist or fetching
-// fails, the original URL is returned unchanged.
+// resolveHLSVariant fetches the master playlist, finds the highest-bandwidth
+// variant, then probes for an unlisted 1080p variant (video=12000000) which
+// BBC hosts but omits from the manifest. Falls back to the highest listed
+// variant if the 1080p probe returns non-200.
 func resolveHLSVariant(masterURL string) string {
 	resp, err := http.Get(masterURL)
 	if err != nil {
+		log.Printf("failed to fetch master playlist: %v", err)
 		return masterURL
 	}
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
+		log.Printf("failed to read master playlist: %v", err)
 		return masterURL
 	}
+	log.Printf("master playlist fetched: %d bytes, %d lines", len(body), strings.Count(string(body), "\n"))
+	log.Printf("master playlist content:\n%s", string(body))
 
 	lines := strings.Split(string(body), "\n")
 	bestBW := 0
 	bestURL := ""
+	bwRe := regexp.MustCompile(`BANDWIDTH=(\d+)`)
 	for i, line := range lines {
 		if !strings.HasPrefix(line, "#EXT-X-STREAM-INF:") {
 			continue
 		}
-		// Parse BANDWIDTH=N from the tag
-		for _, part := range strings.Split(line, ",") {
-			part = strings.TrimSpace(part)
-			if strings.HasPrefix(part, "BANDWIDTH=") {
-				bw, _ := strconv.Atoi(strings.TrimPrefix(part, "BANDWIDTH="))
-				if bw > bestBW && i+1 < len(lines) {
-					bestBW = bw
-					bestURL = strings.TrimSpace(lines[i+1])
-				}
+		if m := bwRe.FindStringSubmatch(line); m != nil {
+			bw, _ := strconv.Atoi(m[1])
+			if bw > bestBW && i+1 < len(lines) {
+				bestBW = bw
+				bestURL = strings.TrimSpace(lines[i+1])
 			}
 		}
 	}
 
+	log.Printf("best variant: bw=%d url=%q", bestBW, bestURL)
 	if bestURL == "" {
+		log.Printf("no variant found in master playlist, returning master URL")
 		return masterURL
 	}
 
-	// Variant URLs are usually relative to the master playlist
+	// Resolve relative to master playlist base
+	base := masterURL
+	if idx := strings.LastIndex(base, "/"); idx >= 0 {
+		base = base[:idx+1]
+	}
 	if !strings.HasPrefix(bestURL, "http") {
-		base := masterURL
-		if idx := strings.LastIndex(base, "/"); idx >= 0 {
-			base = base[:idx+1]
-		}
 		bestURL = base + bestURL
+	}
+
+	// BBC hosts unlisted 1080p variants at video=12000000 that aren't in
+	// the manifest. Probe for it and use if available.
+	if strings.Contains(bestURL, "video=") {
+		fhdURL := regexp.MustCompile(`video=\d+`).ReplaceAllString(bestURL, "video=12000000")
+		log.Printf("probing unlisted 1080p: %s", fhdURL[:min(len(fhdURL), 120)])
+		probeResp, err := http.Head(fhdURL)
+		if err != nil {
+			log.Printf("1080p probe error: %v", err)
+		} else {
+			probeResp.Body.Close()
+			log.Printf("1080p probe response: %d", probeResp.StatusCode)
+			if probeResp.StatusCode == 200 {
+				log.Printf("HLS 1080p variant found (unlisted)")
+				return fhdURL
+			}
+		}
+	} else {
+		log.Printf("best URL does not contain video= segment, skipping 1080p probe")
 	}
 
 	log.Printf("HLS variant selected: bandwidth=%d url=%s", bestBW, bestURL[:min(len(bestURL), 100)])
@@ -104,10 +136,13 @@ func resolveHLSVariant(masterURL string) string {
 func RunFFmpeg(ctx context.Context, job FFmpegJob) error {
 	streamURL := job.StreamURL
 	// For HLS master playlists, resolve the highest-bandwidth variant
-	// since ffmpeg defaults to the first (lowest quality) variant.
-	// DASH manifests don't need this -- ffmpeg picks the highest quality automatically.
+	// and probe for unlisted 1080p. DASH manifests are handled by ffmpeg.
 	if strings.Contains(streamURL, ".m3u8") {
+		log.Printf("resolving HLS variant for: %s", streamURL[:min(len(streamURL), 80)])
 		streamURL = resolveHLSVariant(streamURL)
+		log.Printf("resolved stream URL: %s", streamURL[:min(len(streamURL), 80)])
+	} else {
+		log.Printf("not HLS, skipping variant resolution: %s", streamURL[:min(len(streamURL), 80)])
 	}
 	args := []string{
 		"-loglevel", "fatal",
