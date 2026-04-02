@@ -5,6 +5,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -29,6 +30,7 @@ func NewHandler(st *store.Store, starter DownloadStarter) *Handler {
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	mode := r.URL.Query().Get("mode")
+	log.Printf("[sabnzbd] %s %s mode=%s", r.Method, r.URL.Path, mode)
 
 	switch mode {
 	case "version":
@@ -199,6 +201,7 @@ func (h *Handler) handleHistory(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleAdd(w http.ResponseWriter, r *http.Request) {
+	log.Printf("[sabnzbd] handleAdd called: mode=%s method=%s nzbname=%q cat=%s", r.URL.Query().Get("mode"), r.Method, r.URL.Query().Get("nzbname"), r.URL.Query().Get("cat"))
 	r.Body = http.MaxBytesReader(w, r.Body, 512*1024)
 
 	category := r.URL.Query().Get("cat")
@@ -206,7 +209,7 @@ func (h *Handler) handleAdd(w http.ResponseWriter, r *http.Request) {
 		category = "sonarr"
 	}
 
-	pid, quality, err := h.extractFromRequest(r)
+	pid, quality, nzbFilename, err := h.extractFromRequest(r)
 	if err != nil {
 		writeJSON(w, map[string]interface{}{
 			"status": false,
@@ -217,8 +220,12 @@ func (h *Handler) handleAdd(w http.ResponseWriter, r *http.Request) {
 
 	title := r.URL.Query().Get("nzbname")
 	if title == "" {
+		title = nzbFilename
+	}
+	if title == "" {
 		title = pid
 	}
+	log.Printf("[sabnzbd] download title: %q pid: %s quality: %s", title, pid, quality)
 
 	if h.starter == nil {
 		writeJSON(w, map[string]interface{}{"status": false, "error": "downloads disabled"})
@@ -237,30 +244,35 @@ func (h *Handler) handleAdd(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *Handler) extractFromRequest(r *http.Request) (pid, quality string, err error) {
+func (h *Handler) extractFromRequest(r *http.Request) (pid, quality, nzbFilename string, err error) {
 	mode := r.URL.Query().Get("mode")
 
 	if mode == "addfile" {
 		// Primary path: Sonarr uploads NZB as multipart file
-		file, _, fErr := r.FormFile("name")
+		file, fh, fErr := r.FormFile("name")
 		if fErr != nil {
-			return "", "", fmt.Errorf("read NZB file: %w", fErr)
+			return "", "", "", fmt.Errorf("read NZB file: %w", fErr)
+		}
+		if fh != nil {
+			nzbFilename = strings.TrimSuffix(fh.Filename, ".nzb")
 		}
 		defer file.Close()
 
 		data, fErr := io.ReadAll(file)
 		if fErr != nil {
-			return "", "", fmt.Errorf("read NZB data: %w", fErr)
+			return "", "", "", fmt.Errorf("read NZB data: %w", fErr)
 		}
-		return parseNZBSegment(data)
+		pid, quality, err = parseNZBSegment(data)
+		return pid, quality, nzbFilename, err
 	}
 
 	// Fallback: addurl -- Sonarr sends URL pointing to our t=get endpoint
 	nzbURL := r.URL.Query().Get("name")
 	if nzbURL == "" {
-		return "", "", fmt.Errorf("missing name parameter")
+		return "", "", "", fmt.Errorf("missing name parameter")
 	}
-	return parseNZBURL(nzbURL)
+	pid, quality, err = parseNZBURL(nzbURL)
+	return pid, quality, "", err
 }
 
 func parseNZBSegment(nzbData []byte) (pid, quality string, err error) {
