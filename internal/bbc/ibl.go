@@ -79,23 +79,105 @@ func (ibl *IBL) Search(query string, page int) ([]IBLResult, error) {
 
 	var results []IBLResult
 	for _, r := range resp.NewSearch.Results {
-		result := IBLResult{
-			PID:      r.ID,
-			Title:    r.Title,
-			Subtitle: r.Subtitle,
-			Synopsis: r.Synopses.Small,
-			Channel:  r.MasterBrand.Titles.Small,
-			Position: r.ParentPosition,
-			AirDate:  r.ReleaseDate,
-			BrandPID: r.TleoID,
-		}
-
+		channel := r.MasterBrand.Titles.Small
+		thumb := ""
 		if r.Images.Standard != "" {
-			result.Thumbnail = strings.Replace(r.Images.Standard, "{recipe}", "960x540", 1)
+			thumb = strings.Replace(r.Images.Standard, "{recipe}", "960x540", 1)
 		}
 
-		result.Series, result.EpisodeNum = parseSubtitleNumbers(r.Subtitle)
+		if r.Type == "episode" {
+			result := IBLResult{
+				PID:      r.ID,
+				Title:    r.Title,
+				Subtitle: r.Subtitle,
+				Synopsis: r.Synopses.Small,
+				Channel:  channel,
+				Position: r.ParentPosition,
+				AirDate:  r.ReleaseDate,
+				BrandPID: r.TleoID,
+				Thumbnail: thumb,
+			}
+			result.Series, result.EpisodeNum = parseSubtitleNumbers(r.Subtitle)
+			results = append(results, result)
+		} else {
+			// Brand or series -- expand into individual episodes
+			episodes, err := ibl.ListEpisodes(r.ID)
+			if err != nil {
+				continue
+			}
+			for i := range episodes {
+				if episodes[i].Channel == "" {
+					episodes[i].Channel = channel
+				}
+				if episodes[i].Thumbnail == "" {
+					episodes[i].Thumbnail = thumb
+				}
+			}
+			results = append(results, episodes...)
+		}
+	}
 
+	return results, nil
+}
+
+// ListEpisodes fetches all episodes for a brand or series PID.
+func (ibl *IBL) ListEpisodes(pid string) ([]IBLResult, error) {
+	epURL := fmt.Sprintf("%s/programmes/%s/episodes?per_page=200&page=1",
+		ibl.BaseURL, pid)
+
+	body, err := ibl.client.Get(epURL)
+	if err != nil {
+		return nil, fmt.Errorf("iBL episodes: %w", err)
+	}
+
+	var resp struct {
+		ProgrammeEpisodes struct {
+			Elements []struct {
+				ID       string `json:"id"`
+				Type     string `json:"type"`
+				Title    string `json:"title"`
+				Subtitle string `json:"subtitle"`
+				Synopses struct {
+					Small string `json:"small"`
+				} `json:"synopses"`
+				Images struct {
+					Standard string `json:"standard"`
+				} `json:"images"`
+				MasterBrand struct {
+					Titles struct {
+						Small string `json:"small"`
+					} `json:"titles"`
+				} `json:"master_brand"`
+				ReleaseDate    string `json:"release_date"`
+				ParentPosition int    `json:"parent_position"`
+				TleoID         string `json:"tleo_id"`
+			} `json:"elements"`
+		} `json:"programme_episodes"`
+	}
+
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return nil, fmt.Errorf("parse episodes: %w", err)
+	}
+
+	var results []IBLResult
+	for _, e := range resp.ProgrammeEpisodes.Elements {
+		if e.Type != "episode" {
+			continue
+		}
+		result := IBLResult{
+			PID:      e.ID,
+			Title:    e.Title,
+			Subtitle: e.Subtitle,
+			Synopsis: e.Synopses.Small,
+			Channel:  e.MasterBrand.Titles.Small,
+			Position: e.ParentPosition,
+			AirDate:  e.ReleaseDate,
+			BrandPID: e.TleoID,
+		}
+		if e.Images.Standard != "" {
+			result.Thumbnail = strings.Replace(e.Images.Standard, "{recipe}", "960x540", 1)
+		}
+		result.Series, result.EpisodeNum = parseSubtitleNumbers(e.Subtitle)
 		results = append(results, result)
 	}
 
