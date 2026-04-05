@@ -482,8 +482,8 @@ export default function Dashboard() {
                         : "▼"
                       : ""}
                   </th>
-                  <th scope="col">Quality</th>
-                  <th scope="col">Status</th>
+                  <th scope="col" class="text-center">Quality</th>
+                  <th scope="col" class="text-center">Status</th>
                   <th
                     scope="col"
                     data-sortable
@@ -496,7 +496,7 @@ export default function Dashboard() {
                         : "▼"
                       : ""}
                   </th>
-                  <th scope="col">Size</th>
+                  <th scope="col" class="text-center">Size</th>
                   <th scope="col"></th>
                 </tr>
               </thead>
@@ -505,8 +505,8 @@ export default function Dashboard() {
                   {(dl) => (
                     <tr>
                       <td>{dl.title || dl.pid}</td>
-                      <td class="text-muted">{dl.quality}</td>
-                      <td>
+                      <td class="text-muted text-center">{dl.quality}</td>
+                      <td class="text-center">
                         <span class={statusBadgeClass(dl.status === "completed" && dl.file_exists === false ? "imported" : dl.status)}>
                           {dl.status === "completed" && dl.file_exists === false ? "imported" : dl.status}
                         </span>
@@ -514,7 +514,7 @@ export default function Dashboard() {
                       <td class="text-secondary">
                         {dl.completed_at ? new Date(dl.completed_at).toLocaleString() : ""}
                       </td>
-                      <td class="text-muted">
+                      <td class="text-muted text-center">
                         <Show when={dl.size > 0}>{formatBytes(dl.size)}</Show>
                       </td>
                       <td>
