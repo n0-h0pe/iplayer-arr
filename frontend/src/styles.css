@@ -156,6 +156,7 @@ body {
 
 .status-dot.ok { background: var(--success); }
 .status-dot.warn { background: var(--warning); }
+.status-dot.neutral { background: var(--text-secondary); }
 .status-dot.err { background: var(--danger); }
 
 /* Health strip */
@@ -853,11 +854,11 @@ select.input {
   font-size: 12px;
   line-height: 1.6;
   max-height: 70vh;
-  overflow-y: auto;
+  overflow: auto;
   scroll-behavior: smooth;
 }
 
-.log-line { white-space: pre-wrap; word-break: break-all; }
+.log-line { white-space: pre; }
 .log-debug { color: var(--text-secondary); }
 .log-info { color: var(--text-primary); }
 .log-warn { color: var(--warning); }

@@ -203,6 +203,10 @@ func CheckFFmpeg() (string, error) {
 	}
 	lines := strings.Split(string(out), "\n")
 	if len(lines) > 0 {
+		parts := strings.Fields(lines[0])
+		if len(parts) >= 3 {
+			return parts[2], nil
+		}
 		return strings.TrimSpace(lines[0]), nil
 	}
 	return "unknown", nil

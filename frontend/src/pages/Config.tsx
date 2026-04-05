@@ -9,6 +9,7 @@ export default function Config() {
   const workerOptions = ["1", "2", "3", "5", "10", "15", "20"];
   const [config, setConfig] = createSignal<ConfigResponse | null>(null);
   const [copied, setCopied] = createSignal(false);
+  const [keyRevealed, setKeyRevealed] = createSignal(false);
   const sonarrSetup = () => getSonarrSetup(window.location);
 
   onMount(async () => {
@@ -38,8 +39,9 @@ export default function Config() {
         <div class="card-body">
           <div class="api-key-row">
             <code class="api-key-code" aria-label="API key">
-              {config()!.api_key}
+              {keyRevealed() ? config()!.api_key : config()!.api_key.slice(0, 4) + "••••••••" + config()!.api_key.slice(-4)}
             </code>
+            <button class="btn btn-sm" onClick={() => setKeyRevealed(!keyRevealed())} title={keyRevealed() ? "Hide" : "Reveal"}>{keyRevealed() ? "Hide" : "Reveal"}</button>
             <button class="btn btn-primary btn-sm" onClick={copyKey}>{copied() ? "Copied!" : "Copy"}</button>
           </div>
         </div>

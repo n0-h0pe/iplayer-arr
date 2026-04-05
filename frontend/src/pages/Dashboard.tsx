@@ -298,10 +298,10 @@ export default function Dashboard() {
                 <div class="health-pill">
                   <span
                     class="status-dot"
-                    classList={{ ok: !!sys().last_indexer_request, warn: !sys().last_indexer_request }}
+                    classList={{ ok: !!sys().last_indexer_request, neutral: !sys().last_indexer_request }}
                     aria-hidden="true"
                   />
-                  <span style={{ color: sys().last_indexer_request ? undefined : "var(--warning)" }}>
+                  <span style={{ color: sys().last_indexer_request ? undefined : "var(--text-secondary)" }}>
                     {sys().last_indexer_request
                       ? `Connected · ${relativeTime(sys().last_indexer_request!)}`
                       : "No requests yet"}
