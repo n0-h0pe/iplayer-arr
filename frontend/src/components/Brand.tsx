@@ -1,6 +1,6 @@
 import { A } from "@solidjs/router";
-import logoAppIcon from "../assets/logo-app-icon.png";
-import logoMark from "../assets/logo-mark.png";
+import logoAppIcon from "../assets/logo-app-icon.svg";
+import logoMark from "../assets/logo-mark.svg";
 
 type BrandProps = {
   collapsed?: boolean;
