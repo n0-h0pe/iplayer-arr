@@ -8,7 +8,7 @@ import { getSonarrSetup } from "../lib/sonarr-setup";
 export default function Config() {
   const workerOptions = ["1", "2", "3", "5", "10", "15", "20"];
   const [config, setConfig] = createSignal<ConfigResponse | null>(null);
-  const [copied, setCopied] = createSignal(false);
+  const [copiedField, setCopiedField] = createSignal<string | null>(null);
   const [keyRevealed, setKeyRevealed] = createSignal(false);
   const sonarrSetup = () => getSonarrSetup(window.location);
 
@@ -16,10 +16,10 @@ export default function Config() {
     setConfig(await api.getConfig());
   });
 
-  function copyKey() {
-    navigator.clipboard.writeText(config()!.api_key);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  function copyField(value: string, key: string) {
+    navigator.clipboard.writeText(value);
+    setCopiedField(key);
+    setTimeout(() => setCopiedField(null), 2000);
   }
 
   async function updateConfig(key: string, value: string) {
@@ -42,7 +42,7 @@ export default function Config() {
               {keyRevealed() ? config()!.api_key : config()!.api_key.slice(0, 4) + "••••••••" + config()!.api_key.slice(-4)}
             </code>
             <button class="btn btn-sm" onClick={() => setKeyRevealed(!keyRevealed())} title={keyRevealed() ? "Hide" : "Reveal"}>{keyRevealed() ? "Hide" : "Reveal"}</button>
-            <button class="btn btn-primary btn-sm" onClick={copyKey}>{copied() ? "Copied!" : "Copy"}</button>
+            <button class="btn btn-primary btn-sm" onClick={() => copyField(config()!.api_key, "api-key")}>{copiedField() === "api-key" ? "Copied!" : "Copy"}</button>
           </div>
         </div>
       </div>
@@ -85,16 +85,60 @@ export default function Config() {
         </div>
       </div>
 
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-header">Newznab Indexer</div>
+        <div class="card-body">
+          <p class="text-secondary" style="margin-bottom:12px">Settings &gt; Indexers &gt; + &gt; Newznab</p>
+          <div class="system-row">
+            <span class="system-label">Indexer URL</span>
+            <span style="display:flex;align-items:center;gap:8px">
+              <code style="font-size:12px">{sonarrSetup().indexerUrl}</code>
+              <button class="copy-btn" onClick={() => copyField(sonarrSetup().indexerUrl, "indexer-url")}>
+                {copiedField() === "indexer-url" ? "Copied!" : "Copy"}
+              </button>
+            </span>
+          </div>
+          <div class="system-row">
+            <span class="system-label">API Key</span>
+            <span style="display:flex;align-items:center;gap:8px">
+              <code style="font-size:12px">{config()!.api_key.slice(0, 4)}••••••••{config()!.api_key.slice(-4)}</code>
+              <button class="copy-btn" onClick={() => copyField(config()!.api_key, "indexer-key")}>
+                {copiedField() === "indexer-key" ? "Copied!" : "Copy"}
+              </button>
+            </span>
+          </div>
+        </div>
+      </div>
+
       <div class="card">
-        <div class="card-header">Sonarr Setup</div>
-        <div class="card-body config-instructions">
-          <p><strong>1. Add Indexer</strong> (Settings &gt; Indexers &gt; + &gt; Newznab)</p>
-          <p class="text-secondary">URL: <code>{sonarrSetup().indexerUrl}</code></p>
-          <p class="text-secondary">API Key: <code>{config()!.api_key}</code></p>
-          <p class="mt-12"><strong>2. Add Download Client</strong> (Settings &gt; Download Clients &gt; + &gt; SABnzbd)</p>
-          <p class="text-secondary">Host: <code>{sonarrSetup().sabHost}</code> &nbsp; Port: <code>{sonarrSetup().sabPort}</code> &nbsp; URL Base: <code>{sonarrSetup().sabBase}</code></p>
-          <p class="text-secondary">API Key: <code>{config()!.api_key}</code></p>
-          <p class="text-secondary">Category: <code>{sonarrSetup().sabCategory}</code></p>
+        <div class="card-header">SABnzbd Download Client</div>
+        <div class="card-body">
+          <p class="text-secondary" style="margin-bottom:12px">Settings &gt; Download Clients &gt; + &gt; SABnzbd</p>
+          {[
+            { label: "Host", value: sonarrSetup().sabHost, key: "sab-host" },
+            { label: "Port", value: sonarrSetup().sabPort, key: "sab-port" },
+            { label: "URL Base", value: sonarrSetup().sabBase, key: "sab-base" },
+            { label: "Category", value: sonarrSetup().sabCategory, key: "sab-cat" },
+          ].map((row) => (
+            <div class="system-row">
+              <span class="system-label">{row.label}</span>
+              <span style="display:flex;align-items:center;gap:8px">
+                <code style="font-size:12px">{row.value}</code>
+                <button class="copy-btn" onClick={() => copyField(row.value, row.key)}>
+                  {copiedField() === row.key ? "Copied!" : "Copy"}
+                </button>
+              </span>
+            </div>
+          ))}
+          <div class="system-row">
+            <span class="system-label">API Key</span>
+            <span style="display:flex;align-items:center;gap:8px">
+              <code style="font-size:12px">{config()!.api_key.slice(0, 4)}••••••••{config()!.api_key.slice(-4)}</code>
+              <button class="copy-btn" onClick={() => copyField(config()!.api_key, "sab-key")}>
+                {copiedField() === "sab-key" ? "Copied!" : "Copy"}
+              </button>
+            </span>
+          </div>
         </div>
       </div>
 

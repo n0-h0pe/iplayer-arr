@@ -34,6 +34,20 @@ func Open(path string) (*Store, error) {
 				return fmt.Errorf("create bucket %s: %w", b, err)
 			}
 		}
+
+		// Seed config defaults (only when key is absent).
+		cfg := tx.Bucket(bucketConfig)
+		defaults := map[string]string{
+			"auto_cleanup": "true",
+		}
+		for k, v := range defaults {
+			if cfg.Get([]byte(k)) == nil {
+				if err := cfg.Put([]byte(k), []byte(v)); err != nil {
+					return fmt.Errorf("seed default %s: %w", k, err)
+				}
+			}
+		}
+
 		return nil
 	})
 	if err != nil {

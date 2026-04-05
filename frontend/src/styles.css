@@ -47,6 +47,7 @@ body {
   margin-left: var(--nav-width);
   padding: 24px 32px;
   max-width: 1200px;
+  overflow-x: hidden;
   transition: margin-left 0.2s;
 }
 
@@ -858,7 +859,7 @@ select.input {
   scroll-behavior: smooth;
 }
 
-.log-line { white-space: pre; }
+.log-line { white-space: pre-wrap; word-break: break-all; }
 .log-debug { color: var(--text-secondary); }
 .log-info { color: var(--text-primary); }
 .log-warn { color: var(--warning); }
