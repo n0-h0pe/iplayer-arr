@@ -252,6 +252,7 @@ body {
 .badge-downloading { background: #1e2a4a; color: var(--accent); }
 .badge-converting { background: #2a2540; color: #b488ff; }
 .badge-completed { background: #1a3030; color: var(--success); }
+.badge-imported { background: #1a2a3a; color: #6ea8ff; }
 .badge-failed { background: #3a1a1a; color: var(--danger); }
 
 /* Download item */

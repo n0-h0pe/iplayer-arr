@@ -25,6 +25,7 @@ export interface Download {
   created_at: string;
   started_at: string;
   completed_at: string;
+  file_exists?: boolean;
 }
 
 export interface StatusResponse {

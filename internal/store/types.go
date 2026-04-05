@@ -29,6 +29,7 @@ type Download struct {
 	CreatedAt    time.Time `json:"created_at"`
 	StartedAt    time.Time `json:"started_at"`
 	CompletedAt  time.Time `json:"completed_at"`
+	FileExists   *bool     `json:"file_exists,omitempty"`
 }
 
 type Programme struct {

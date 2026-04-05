@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 
@@ -62,7 +63,23 @@ func (h *Handler) handleListHistory(w http.ResponseWriter, r *http.Request) {
 	if page.Items == nil {
 		page.Items = []*store.Download{}
 	}
+	annotateFileExists(page.Items)
 	writeJSON(w, http.StatusOK, page)
+}
+
+// annotateFileExists sets the FileExists flag on each completed history entry
+// by checking whether the output file is still on disk.
+func annotateFileExists(items []*store.Download) {
+	for _, dl := range items {
+		if dl.OutputFile == "" {
+			continue
+		}
+		exists := true
+		if _, err := os.Stat(dl.OutputFile); err != nil {
+			exists = false
+		}
+		dl.FileExists = &exists
+	}
 }
 
 func (h *Handler) handleClearHistory(w http.ResponseWriter, r *http.Request) {

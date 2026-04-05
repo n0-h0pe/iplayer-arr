@@ -507,7 +507,9 @@ export default function Dashboard() {
                       <td>{dl.title || dl.pid}</td>
                       <td class="text-muted">{dl.quality}</td>
                       <td>
-                        <span class={statusBadgeClass(dl.status)}>{dl.status}</span>
+                        <span class={statusBadgeClass(dl.status === "completed" && dl.file_exists === false ? "imported" : dl.status)}>
+                          {dl.status === "completed" && dl.file_exists === false ? "imported" : dl.status}
+                        </span>
                       </td>
                       <td class="text-secondary">
                         {dl.completed_at ? new Date(dl.completed_at).toLocaleString() : ""}
