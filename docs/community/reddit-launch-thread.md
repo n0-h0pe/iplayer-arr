@@ -51,6 +51,11 @@ After iPlayarr comparison was raised in comments:
 - Practical difference: content available on iPlayer but not currently airing may not surface in iPlayarr search
 - iPlayarr also recently added season offsetting (PR #205) - worth monitoring for feature parity
 
+### VPN Compatibility
+
+- Private Internet Access (PIA) tested and confirmed working
+- Some providers are blocked by BBC geo-detection - not a project issue, a provider issue
+
 ---
 
 ## Thread Comments and Responses
@@ -80,14 +85,14 @@ After iPlayarr comparison was raised in comments:
 > That's fair. Well the addition of the VPN alone is a great feature. I have given it a go and spent the past 30 mins setting it up. Unfortunately my VPN provider appears to be blocked by BBC so I cannot test further at the moment. Only suggestion right now is that the VPN setup was a fair bit of work - You'd probably attract more attention if that became part of the setup in the GUI.
 
 **Response posted:**
-> Really glad you gave it a go, sorry the VPN provider got in the way. That's a known pain point with some providers - BBC's geo-detection has got stricter over time.
+> Really glad you gave it a go, sorry the VPN provider got in the way.
 >
-> The VPN setup UX is fair feedback and honestly something I've been thinking about. The hotio base handles the WireGuard config under the hood but surfacing that through the setup wizard rather than environment variables is a solid suggestion. I'll log it as a feature request.
+> The VPN setup feedback is noted, it's something worth looking at. I tested with Private Internet Access which seems to work fine if you're looking for something to try in the meantime. I'll log the wizard idea as a feature request.
 
 ---
 
 ## Action Items from Thread
 
-- [ ] GitHub issue: VPN configuration surfaced through setup wizard UI
+- [x] Gitea issue #10: VPN configuration surfaced through setup wizard UI
 - [ ] Clarify "nothing existed" wording in original post going forward
 - [ ] Monitor iPlayarr for feature updates (season offsetting, Lunr search improvements)
