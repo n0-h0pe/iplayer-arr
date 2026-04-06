@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="docs/logo.png" alt="iplayer-arr" width="500" />
+  <img src="docs/logo.svg" alt="iplayer-arr" width="400" />
 </p>
 
-BBC iPlayer download manager with a web UI, Sonarr integration, and built-in VPN support.
+<p align="center">BBC iPlayer download manager that plugs into Sonarr as both an indexer and download client.</p>
 
 [![CI](https://github.com/Will-Luck/iplayer-arr/actions/workflows/ci.yml/badge.svg)](https://github.com/Will-Luck/iplayer-arr/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/Will-Luck/iplayer-arr)](https://github.com/Will-Luck/iplayer-arr/releases)
@@ -11,18 +11,31 @@ BBC iPlayer download manager with a web UI, Sonarr integration, and built-in VPN
 
 ![Dashboard](docs/screenshots/04-dashboard.png)
 
+## How it works
+
+Most iPlayer download tools grab programmes by URL and leave you with a file to sort out yourself. iplayer-arr speaks Sonarr's language natively -- it presents a Newznab indexer for search and a SABnzbd download client for fetching, so Sonarr treats it like any other indexer/downloader pair.
+
+The hard part is episode numbering. BBC iPlayer doesn't follow a consistent scheme -- some shows have full series/episode metadata, others only have a position index within a series, and daily shows often have nothing but an air date. Sonarr expects TheTVDB-style S01E03 numbering, and the two rarely agree out of the box.
+
+iplayer-arr solves this with a 4-tier resolution chain:
+
+1. **Full** -- BBC provides series + episode number, used directly
+2. **Position** -- no episode number, but the programme has a position in its series (e.g. 3rd of 6), mapped to S01E03
+3. **Date** -- no numbering at all, air date used as the episode identifier (2026.01.15)
+4. **Manual** -- title only, last resort
+
+When the auto-resolved numbering still doesn't match TheTVDB (common with specials, reboots, or shows where the BBC counts differently), per-show overrides let you adjust series/episode offsets, force date-based numbering, or remap programme names -- all from the web UI.
+
 ## Features
 
-- Search and browse BBC iPlayer via the BBC IBL API
-- Automatic HLS stream download with quality selection (720p/540p/396p)
-- Download queue with configurable concurrent workers
-- Newznab-compatible indexer for Sonarr
-- SABnzbd-compatible download client API
-- Real-time dashboard with SSE live progress
+- Newznab indexer + SABnzbd download client in one container
+- 4-tier episode identity resolution with per-show overrides
+- HLS stream download with quality selection (1080p/720p/540p/396p)
+- Real-time dashboard with SSE progress and download history
 - Built-in WireGuard VPN via hotio base image (off by default)
-- Setup wizard for first-run Sonarr configuration
-- Episode identity resolution with per-show overrides
-- System health monitoring (disk usage, ffmpeg status, geo check)
+- Setup wizard walks you through Sonarr configuration
+- BBC iPlayer search with thumbnails and one-click download
+- System health page with geo check, disk usage, ffmpeg status
 
 ## Quick Start
 
