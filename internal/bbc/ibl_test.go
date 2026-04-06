@@ -119,6 +119,39 @@ func TestSearchNormalisesLooseAirDate(t *testing.T) {
 	}
 }
 
+func TestParseSubtitleNumbers(t *testing.T) {
+	// BBC's iPlayer episode metadata uses two distinct subtitle layouts:
+	//   - "Series N: M. Title"  (numbered list)        e.g. Drugs Map of Britain
+	//   - "Series N: Episode M" (named, no list index) e.g. Little Britain
+	// Both must produce the same (series, episode) pair so that the newznab
+	// season/episode filter accepts the release for Sonarr. Issue #13.
+	cases := []struct {
+		subtitle string
+		series   int
+		episode  int
+	}{
+		{"Series 1: Episode 1", 1, 1},
+		{"Series 1: Episode 2", 1, 2},
+		{"Series 1: Episode 12", 1, 12},
+		{"Series 11: Episode 4", 11, 4},
+		{"Series 1: episode 5", 1, 5}, // case-insensitive
+		{"Series 1: 1. Nitrous Oxide", 1, 1},
+		{"Series 4: 12. Christmas Special", 4, 12},
+		{"Series 1: 1", 1, 1},
+		{"Cyfres 2: Pennod 4", 2, 4}, // Welsh
+		{"Series 1: Pilot", 1, 0},    // unnumbered episode -> falls through to other tiers
+		{"Series 1", 1, 0},           // no episode part
+		{"Episode 1", 0, 0},          // no series part
+	}
+	for _, tc := range cases {
+		s, e := parseSubtitleNumbers(tc.subtitle)
+		if s != tc.series || e != tc.episode {
+			t.Errorf("parseSubtitleNumbers(%q) = (%d, %d), want (%d, %d)",
+				tc.subtitle, s, e, tc.series, tc.episode)
+		}
+	}
+}
+
 func TestListEpisodesPagination(t *testing.T) {
 	page1 := `{
 		"programme_episodes": {

@@ -130,6 +130,78 @@ func TestHandleTVSearchDailyMismatchByDate(t *testing.T) {
 	}
 }
 
+func TestHandleTVSearchFiltersOtherShowsByName(t *testing.T) {
+	// Regression: BBC iPlayer's IBL search is relevance-ranked, so a query
+	// like "Little Britain" returns ~24 unrelated programmes whose titles
+	// merely contain "Britain" (Cunk on Britain, Drugs Map of Britain, A
+	// History of Ancient Britain, Inside Britain's National Parks, ...).
+	// Without a show-name filter every one of those gets expanded into
+	// episodes and matched against Sonarr's S01E01 query, flooding the
+	// manual search UI with false positives. Issue #13.
+	payload := `{
+		"new_search": {
+			"results": [
+				{"id": "b0074d8v", "type": "episode", "title": "Little Britain", "subtitle": "Series 1: Episode 1", "release_date": "2003-09-16", "parent_position": 1},
+				{"id": "cunk1", "type": "episode", "title": "Cunk on Britain", "subtitle": "Series 1: Episode 1", "release_date": "2018-04-03", "parent_position": 1},
+				{"id": "drugs1", "type": "episode", "title": "Drugs Map of Britain", "subtitle": "Series 1: 1. Nitrous Oxide", "release_date": "2017-11-08", "parent_position": 1},
+				{"id": "history1", "type": "episode", "title": "A History of Ancient Britain", "subtitle": "Series 1: 1. Age of Ice", "release_date": "2011-02-03", "parent_position": 1}
+			]
+		}
+	}`
+	h := newHandlerWithBBC(t, payload)
+	req := httptest.NewRequest("GET", "/newznab/api?t=tvsearch&q=little+britain&season=1&ep=1", nil)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	titles := itemTitles(w.Body.String())
+	if len(titles) == 0 {
+		t.Fatalf("expected Little Britain releases, got empty body:\n%s", w.Body.String())
+	}
+	for _, title := range titles {
+		if !strings.HasPrefix(title, "Little.Britain.S01E01") {
+			t.Errorf("title = %q, want Little.Britain.S01E01.* (other-show filter should reject this)", title)
+		}
+	}
+}
+
+func TestHandleSearchBrowseHasNoNameFilter(t *testing.T) {
+	// When neither q nor tvdbid is set Sonarr is doing a wildcard browse
+	// for the RSS test feed (and the iplayer-arr web UI uses the same
+	// path). The handler falls back to q="BBC" internally, but that must
+	// not be applied as a show-name filter — every BBC programme should
+	// still be returned.
+	payload := `{
+		"new_search": {
+			"results": [
+				{"id": "b0074d8v", "type": "episode", "title": "Little Britain", "subtitle": "Series 1: Episode 1", "release_date": "2003-09-16", "parent_position": 1},
+				{"id": "drugs1", "type": "episode", "title": "Drugs Map of Britain", "subtitle": "Series 1: 1. Nitrous Oxide", "release_date": "2017-11-08", "parent_position": 1}
+			]
+		}
+	}`
+	h := newHandlerWithBBC(t, payload)
+	req := httptest.NewRequest("GET", "/newznab/api?t=search", nil)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	titles := itemTitles(w.Body.String())
+	if len(titles) == 0 {
+		t.Fatalf("expected browse results, got empty body:\n%s", w.Body.String())
+	}
+	gotLB := false
+	gotDM := false
+	for _, title := range titles {
+		if strings.HasPrefix(title, "Little.Britain") {
+			gotLB = true
+		}
+		if strings.HasPrefix(title, "Drugs.Map.of.Britain") {
+			gotDM = true
+		}
+	}
+	if !gotLB || !gotDM {
+		t.Errorf("browse must include both shows (Little Britain seen=%v, Drugs Map of Britain seen=%v); titles=%v", gotLB, gotDM, titles)
+	}
+}
+
 func TestHandleTVSearchStandardSEStillWorks(t *testing.T) {
 	// Doctor Who S1E3 — proper S/E numbering must continue to filter by
 	// integer season/episode and produce a Tier 1 title.

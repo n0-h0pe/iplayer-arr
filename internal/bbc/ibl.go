@@ -38,8 +38,12 @@ type IBLResult struct {
 }
 
 var (
-	reSeriesNum  = regexp.MustCompile(`(?i)(?:Series|Cyfres|Season)\s+(\d+)`)
-	reEpisodeNum = regexp.MustCompile(`^(\d+)\.\s*`)
+	reSeriesNum = regexp.MustCompile(`(?i)(?:Series|Cyfres|Season)\s+(\d+)`)
+	// Match either "1. Title" (numbered list) or "Episode 1" / "Pennod 1"
+	// (named) forms. BBC uses both across iPlayer; without the named form
+	// shows like Little Britain end up with EpisodeNum=0 and get filtered
+	// out of Sonarr's tvsearch results. See issue #13.
+	reEpisodeNum = regexp.MustCompile(`(?i)(?:^|(?:Episode|Pennod)\s+)(\d+)`)
 )
 
 func (ibl *IBL) Search(query string, page int) ([]IBLResult, error) {

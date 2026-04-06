@@ -5,6 +5,41 @@ All notable changes to iplayer-arr will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] - 2026-04-06
+
+### Fixed
+
+- **BBC shows whose iPlayer subtitle uses the `"Series N: Episode M"` form (Little Britain, Cunk on Britain, and any other show that doesn't number episodes as `"M. Title"`) now reach Sonarr correctly.** The Newznab `tvsearch` filter compares Sonarr's `season`/`ep` against the parsed `Series`/`EpisodeNum` extracted from each iPlayer subtitle. The episode-number regex was anchored to the numbered-list form `^(\d+)\.\s*` and silently failed on the named form, so `EpisodeNum` stayed at 0 and every release was filtered out. End-to-end: Sonarr saw zero candidates for these shows, fell back to whatever it could parse, and Sonarr's manual import had to clean up after the file landed on disk without `S01E01` in the name. Issue #13.
+  - `internal/bbc/ibl.go`: `reEpisodeNum` now matches both layouts via `(?i)(?:^|(?:Episode|Pennod)\s+)(\d+)`. Welsh `Pennod` added for parity with the existing `Cyfres` series alias. The numbered-list form (`"1. Pilot"`, `"12. Christmas Special"`) still works unchanged.
+
+- **Sonarr's interactive search no longer floods with releases from unrelated BBC shows.** BBC iPlayer's IBL search is relevance-ranked across the whole catalogue, so a query like `little britain` returns ~24 programmes whose titles merely contain "Britain": Cunk on Britain, Drugs Map of Britain, A History of Ancient Britain, Inside Britain's National Parks, A History of Britain by Simon Schama, Glow Up: Britain's Next Make-Up Star, and so on. iplayer-arr previously expanded every one of those into episodes and matched them against Sonarr's S/E filter, surfacing dozens of false positives in the manual search UI. The new show-name filter drops any episode whose BBC programme title doesn't case-insensitively match the resolved query name (whether that came from Sonarr's `q=` or a `tvdbid` -> Skyhook lookup). Wildcard browse mode (`q=""` and `tvdbid=""`) is exempt so the iplayer-arr web UI still lists everything.
+  - `internal/newznab/search.go`: `writeResultsRSS` gains a `filterName` parameter; `handleSearch` and `handleTVSearch` capture the resolved query name *before* the BBC fallback so wildcard browses don't inherit a filter.
+
+### Tests
+
+- +3 new tests bringing the suite from 109 to 112:
+  - `bbc/ibl_test.go::TestParseSubtitleNumbers`: 12 cases covering both subtitle layouts, Welsh, mixed case, multi-digit episodes, and edge cases (unnumbered, no series part).
+  - `newznab/handler_test.go::TestHandleTVSearchFiltersOtherShowsByName`: payload of four "Britain" shows; only Little Britain releases survive the filter.
+  - `newznab/handler_test.go::TestHandleSearchBrowseHasNoNameFilter`: verifies the wildcard browse mode is exempt from the filter so the iplayer-arr web UI still lists every show.
+
+### Verified end-to-end
+
+Live container on a real BBC iPlayer feed:
+
+| Search | Before v1.0.2 | After v1.0.2 |
+|---|---|---|
+| `tvdbid=72135&season=1&ep=1` (Little Britain S01E01) | Only `Drugs.Map.of.Britain.S01E01.*` (Little Britain rejected by EpisodeNum filter) | Three `Little.Britain.S01E01.*` quality variants and nothing else |
+| `q=little+britain&season=1&ep=1` | Drugs Map of Britain only | Three `Little.Britain.S01E01.*` quality variants |
+| `t=search` (browse) | All BBC content | All BBC content (filter correctly disabled) |
+| EastEnders date query (v1.0.1 daily-soap fix) | `EastEnders.2026.03.30.*` | `EastEnders.2026.03.30.*` (no regression) |
+
+### Container images
+
+```
+docker pull ghcr.io/will-luck/iplayer-arr:1.0.2
+docker pull willluck/iplayer-arr:1.0.2
+```
+
 ## [1.0.1] - 2026-04-06
 
 ### Fixed

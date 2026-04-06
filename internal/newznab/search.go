@@ -21,6 +21,7 @@ func (h *Handler) handleSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	q := r.URL.Query().Get("q")
+	filterName := q // captured before the BBC fallback so wildcard browses don't apply a filter
 	if q == "" {
 		q = "BBC" // default query for RSS feed and Sonarr test
 	}
@@ -31,7 +32,7 @@ func (h *Handler) handleSearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.writeResultsRSS(w, r, results, 0, 0, "")
+	h.writeResultsRSS(w, r, results, 0, 0, "", filterName)
 }
 
 func (h *Handler) handleTVSearch(w http.ResponseWriter, r *http.Request) {
@@ -63,6 +64,10 @@ func (h *Handler) handleTVSearch(w http.ResponseWriter, r *http.Request) {
 		writeEmptyRSS(w)
 		return
 	}
+	// Capture the resolved show name (either Sonarr's q= or the
+	// tvdbid → Skyhook lookup) BEFORE the BBC fallback so the wildcard
+	// browse path doesn't accidentally inherit a filter.
+	filterName := q
 	if q == "" {
 		q = "BBC"
 	}
@@ -84,7 +89,7 @@ func (h *Handler) handleTVSearch(w http.ResponseWriter, r *http.Request) {
 	// so detect the daily shape and filter by air date instead.
 	filterDate := parseDailySearchDate(seasonStr, epStr)
 
-	h.writeResultsRSS(w, r, results, season, ep, filterDate)
+	h.writeResultsRSS(w, r, results, season, ep, filterDate, filterName)
 }
 
 // parseDailySearchDate returns YYYY-MM-DD when season looks like a 4-digit
@@ -113,11 +118,25 @@ func parseDailySearchDate(seasonStr, epStr string) string {
 	return fmt.Sprintf("%04d-%02d-%02d", year, mm, dd)
 }
 
-func (h *Handler) writeResultsRSS(w http.ResponseWriter, r *http.Request, results []bbc.IBLResult, filterSeason, filterEp int, filterDate string) {
+func (h *Handler) writeResultsRSS(w http.ResponseWriter, r *http.Request, results []bbc.IBLResult, filterSeason, filterEp int, filterDate, filterName string) {
 	var items []string
+	wantName := strings.TrimSpace(filterName)
 
 	for _, res := range results {
 		prog := iblResultToProgramme(res)
+
+		// BBC iPlayer's IBL search is relevance-ranked across the whole
+		// catalogue, so a query like "Little Britain" returns ~24 shows
+		// whose titles merely contain "Britain" (Cunk on Britain, Drugs
+		// Map of Britain, A History of Ancient Britain, etc.). Without
+		// this guard every one of those gets expanded into episodes and
+		// matched against Sonarr's S/E filter, flooding the manual search
+		// UI with releases for the wrong show. When the caller knows the
+		// exact show name (from Sonarr's q= or a tvdbid → Skyhook lookup)
+		// we drop any episode whose programme title isn't that show.
+		if wantName != "" && !strings.EqualFold(strings.TrimSpace(prog.Name), wantName) {
+			continue
+		}
 
 		if filterDate != "" {
 			// Daily-series filter: match against canonical YYYY-MM-DD
