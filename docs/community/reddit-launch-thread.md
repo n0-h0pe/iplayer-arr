@@ -62,4 +62,37 @@ After iPlayarr comparison was raised in comments:
 
 ### Comment: "iPlayarr already exists"
 
-> I'm sorry to burst your bubble, but Iplayarr has existed for a while. The fact you said "nothing existed" for this, despite your applications having 2 character difference in name is
+> I'm sorry to burst your bubble, but Iplayarr has existed for a while. The fact you said "nothing existed" for this, despite your applications having 2 character difference in name is not a good look.
+
+**Response posted:**
+> iPlayarr wraps the get_iplayer executable, it's not a native implementation.
+>
+> It also doesn't tackle the series and episode numbering problem this is built around, which is the core difference.
+>
+> You're right that iPlayarr has been around a while though, and I should have been clearer. Nothing existed that does *this specifically*, not that nothing existed at all.
+
+### Comment: "Why not contribute to iPlayarr?"
+
+> strich: I appreciate the work you've put in. But maybe it would have been better to contribute to the existing solution rather than this?
+
+**Response posted:**
+> That's a fair question, and I did look at it early on. The problem is the two projects share a goal but not much else. iPlayarr is built around get_iplayer as its engine, so contributing the native HLS downloader, the Newznab/SABnzbd API layer, and the episode resolution chain would have meant replacing most of the core. At that point you're not really contributing, you're proposing a rewrite of someone else's project, which didn't feel right either.
+>
+> Building separately meant Nikorag's project stays intact for the people it works well for, and this one exists for a different use case.
+
+### Comment: VPN feedback (strich)
+
+> That's fair. Well the addition of the VPN alone is a great feature. I have given it a go and spent the past 30 mins setting it up. Unfortunately my VPN provider appears to be blocked by BBC so I cannot test further at the moment. Only suggestion right now is that the VPN setup was a fair bit of work - You'd probably attract more attention if that became part of the setup in the GUI.
+
+**Response posted:**
+> Really glad you gave it a go, sorry the VPN provider got in the way.
+>
+> The VPN setup feedback is noted. I tested with Private Internet Access which seems to work fine if you're looking for something to try in the meantime. I'll log it as a feature request and look into it when I get time.
+
+---
+
+## Action Items from Thread
+
+- [x] Gitea issue #10: VPN configuration surfaced through setup wizard UI
+- [ ] Clarify "nothing existed" wording in original post going forward
+- [ ] Monitor iPlayarr for feature updates (season offsetting, Lunr search improvements)
