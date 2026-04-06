@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/logo.svg" alt="iplayer-arr" width="400" />
+  <img src="docs/logo.png" alt="iplayer-arr" width="400" />
 </p>
 
 <p align="center">BBC iPlayer download manager that plugs into Sonarr as both an indexer and download client.</p>
