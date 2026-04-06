@@ -8,6 +8,10 @@
 [![Release](https://img.shields.io/github/v/release/Will-Luck/iplayer-arr)](https://github.com/Will-Luck/iplayer-arr/releases)
 [![Licence](https://img.shields.io/github/license/Will-Luck/iplayer-arr)](LICENSE)
 [![GHCR](https://img.shields.io/badge/ghcr.io-will--luck%2Fiplayer--arr-blue?logo=github)](https://github.com/Will-Luck/iplayer-arr/pkgs/container/iplayer-arr)
+[![Docker Hub](https://img.shields.io/badge/Docker%20Hub-willluck%2Fiplayer--arr-blue?logo=docker)](https://hub.docker.com/r/willluck/iplayer-arr)
+[![Pulls](https://img.shields.io/endpoint?url=https://pkgbadge.pphserv.uk/Will-Luck/iplayer-arr/pulls.json)](https://github.com/Will-Luck/iplayer-arr/pkgs/container/iplayer-arr)
+[![Image Size](https://img.shields.io/endpoint?url=https://pkgbadge.pphserv.uk/Will-Luck/iplayer-arr/size.json)](https://github.com/Will-Luck/iplayer-arr/pkgs/container/iplayer-arr)
+[![Platforms](https://img.shields.io/endpoint?url=https://pkgbadge.pphserv.uk/Will-Luck/iplayer-arr/arch.json)](https://github.com/Will-Luck/iplayer-arr/pkgs/container/iplayer-arr)
 
 ![Dashboard](docs/screenshots/04-dashboard.png)
 
