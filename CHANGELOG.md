@@ -5,6 +5,58 @@ All notable changes to iplayer-arr will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2026-04-08
+
+### Breaking changes
+
+- **Default PORT changed from 8191 to 62001** to avoid collision with FlareSolverr (which also defaults to 8191). Users with `-p 8191:8191` in their docker-compose must update to `-p 62001:62001`, or set `-e PORT=8191` to keep the old port. Users who already set `PORT` explicitly are unaffected.
+
+### Fixed
+
+- **#15 Match of the Day daily title**: BBC composite-format subtitles like `"2025/26: 22/03/2026"` no longer produce malformed triple-dated filenames. Sonarr's Daily-series parser now accepts Match of the Day releases.
+- **#16 DOWNLOAD_DIR variable not surfaced in UI**: the env-derived value is now consistently returned by `/api/config`, the directory listing endpoints, and the SABnzbd compat handler. Files were already downloading to the correct location; only the UI display was wrong.
+- **#18 Doctor Who duplicate-name disambiguation**: Sonarr searches for shows with year-suffixed BBC brand titles (classic Doctor Who, 2005-2022 era, Casualty reboots, etc.) now route to the correct brand via year-range matching. Adds new `bareName`, `extractYearRange`, `nameMatchesWithYear`, and `disambiguateByYear` helpers. Known limitation: if BBC's own metadata catalogue mislabels an episode (e.g. a modern Doctor Who episode catalogued under the 1963-1996 brand PID), iplayer-arr cannot detect the inconsistency. This is a BBC data quality issue, not an iplayer-arr bug.
+- **#19 Default PORT collides with FlareSolverr**: see Breaking changes above.
+
+### Closed as out of scope
+
+- **#14 STV Player support**: iplayer-arr is intentionally a BBC iPlayer-only tool. See the issue reply for the full reasoning.
+
+### Project governance
+
+- Added `DISCLAIMER.md` with TV Licence requirement, BBC trademark disclaimer, personal-use restriction
+- Added `SECURITY.md` pointing at GitHub Private Vulnerability Reporting
+- Added structured GitHub Issue Forms (bug report + feature request) with all fields optional, and a `config.yml` that routes security reports to Private Vulnerability Reporting
+- Backfilled the v1.1.0 CHANGELOG entry that was missing
+
+### Tests
+
+- Approximately 35 new unit and integration tests across `internal/newznab/`, `internal/bbc/`, `internal/api/`, `internal/sabnzbd/`, `internal/store/`, and `cmd/iplayer-arr/`. All BBC and Skyhook API calls mocked - no live network calls in tests.
+
+### Design spec
+
+See `docs/superpowers/specs/2026-04-08-iplayer-arr-v1.1.1-design.md` for the full design rationale (10 review rounds applied).
+
+## [1.1.0] - 2026-04-08
+
+### Fixed
+
+- **Download directory permissions**: `EnsureDownloadDir` now creates download directories with mode `0o775` instead of `0o755`, so a container's PUID/PGID can write to host-mounted download directories under the default umask of `0o002`. Previously, downloads would fail at the first file write because the group-write bit had been stripped. This affected UNRAID users running iplayer-arr alongside Sonarr with hotio's `UMASK=002` convention.
+- **No more fake 1080p in RSS responses**: the Newznab search response no longer advertises `1080p` for shows BBC does not actually offer in 1080p. Previously, Sonarr would see a `1080p` item in the RSS feed for shows like EastEnders, try to grab it, and receive a 720p file at best. v1.1.0 probes BBC's mediaselector at search time and only advertises quality tags that match what BBC actually delivers. The probe results are cached per-PID in a new BoltDB `quality_cache` bucket and reused indefinitely (BBC content masters are effectively immutable once published).
+
+### Configuration (optional)
+
+- `IPLAYER_PROBE_CONCURRENCY` (default `8`) - worker pool size for parallel quality prefetch
+- `IPLAYER_PROBE_TIMEOUT_SEC` (default `20`) - per-probe wall-time deadline
+
+### Tests
+
+- 51 new unit tests across 6 new files (`internal/bbc/fhdprobe_test.go`, `internal/bbc/prober_test.go`, `internal/store/quality_cache_test.go`, `internal/newznab/heights_test.go`, `internal/download/ffmpeg_hls_test.go`, plus `internal/bbc/ibl_test.go` extension) and 1 extension to `internal/newznab/handler_test.go`. All BBC and ffmpeg interactions mocked - no live network calls in tests.
+
+### Design spec
+
+See `docs/superpowers/specs/2026-04-07-iplayer-arr-issue-12-design.md` for the full design rationale and PR #17 for the diff.
+
 ## [1.0.2] - 2026-04-06
 
 ### Fixed

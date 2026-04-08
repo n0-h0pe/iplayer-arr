@@ -43,10 +43,12 @@ When the auto-resolved numbering still doesn't match TheTVDB (common with specia
 
 ## Quick Start
 
+> **Important**: You must hold a valid UK TV Licence to legally access BBC iPlayer content via iplayer-arr. iplayer-arr does not verify this and assumes you are compliant. See [DISCLAIMER.md](DISCLAIMER.md) for full legal terms.
+
 ```bash
 docker run -d \
   --name iplayer-arr \
-  -p 8191:8191 \
+  -p 62001:62001 \
   -v iplayer-arr-config:/config \
   -v /path/to/downloads:/downloads \
   -e TZ=Europe/London \
@@ -61,7 +63,7 @@ services:
     image: ghcr.io/will-luck/iplayer-arr:latest
     container_name: iplayer-arr
     ports:
-      - 8191:8191
+      - 62001:62001
     volumes:
       - iplayer-arr-config:/config
       - /path/to/downloads:/downloads
@@ -75,7 +77,7 @@ volumes:
 
 > iPlayer requires a UK IP address. Enable the built-in VPN or run behind an existing UK VPN/proxy. See the [VPN Configuration](https://github.com/Will-Luck/iplayer-arr/wiki/VPN-Configuration) wiki page.
 
-Open `http://localhost:8191` and the setup wizard will guide you through connecting Sonarr.
+Open `http://localhost:62001` and the setup wizard will guide you through connecting Sonarr.
 
 ## Configuration
 
@@ -93,6 +95,17 @@ See the [Wiki](https://github.com/Will-Luck/iplayer-arr/wiki) for:
 - [REST API Reference](https://github.com/Will-Luck/iplayer-arr/wiki/REST-API-Reference)
 - [Troubleshooting](https://github.com/Will-Luck/iplayer-arr/wiki/Troubleshooting)
 
+## Legal
+
+iplayer-arr is not affiliated with, endorsed by, or sponsored by the BBC. iPlayer is a trademark of the British Broadcasting Corporation. Users in the UK must hold a valid TV Licence to legally access BBC iPlayer content via this tool.
+
+- [DISCLAIMER.md](DISCLAIMER.md) - full legal terms, TV Licence requirement, personal-use restriction
+- [SECURITY.md](SECURITY.md) - security and abuse reporting via GitHub's Private Vulnerability Reporting
+
 ## Licence
 
 GPL-3.0. See [LICENSE](LICENSE).
+
+---
+
+*iplayer-arr is not affiliated with, endorsed by, or sponsored by the BBC. iPlayer is a trademark of the British Broadcasting Corporation.*

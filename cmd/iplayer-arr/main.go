@@ -25,10 +25,22 @@ import (
 	"github.com/Will-Luck/iplayer-arr/internal/web"
 )
 
+// defaultPort is the TCP port iplayer-arr listens on when the PORT
+// environment variable is not set. Chosen to avoid collision with
+// FlareSolverr's default port. See
+// docs/superpowers/specs/2026-04-08-iplayer-arr-v1.1.1-design.md.
+const defaultPort = "62001"
+
+// resolvePort returns the port main() should bind to, applying
+// PORT env-var override with fallback to defaultPort.
+func resolvePort() string {
+	return envOr("PORT", defaultPort)
+}
+
 func main() {
 	configDir := envOr("CONFIG_DIR", "/config")
 	downloadDir := envOr("DOWNLOAD_DIR", "/downloads")
-	port := envOr("PORT", "8191")
+	port := resolvePort()
 
 	dbPath := filepath.Join(configDir, "iplayer-arr.db")
 	st, err := store.Open(dbPath)
@@ -129,7 +141,9 @@ func main() {
 	nzHandler := newznab.NewHandler(ibl, st, ms, prober)
 	nzHandler.SetOnRequest(apiHandler.RecordIndexerRequest)
 	mux.Handle("/newznab/", nzHandler)
-	mux.Handle("/sabnzbd/", sabnzbd.NewHandler(st, mgr))
+	sabHandler := sabnzbd.NewHandler(st, mgr)
+	sabHandler.DownloadDir = downloadDir
+	mux.Handle("/sabnzbd/", sabHandler)
 	mux.Handle("/api/", apiHandler)
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
