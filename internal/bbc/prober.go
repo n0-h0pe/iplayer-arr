@@ -140,8 +140,10 @@ func (p *QualityProber) probeOne(parentCtx context.Context, item ProbeItem) []in
 	}
 	heights := dedupedSortedHeights(streams.Video)
 
-	// 5. FHD probe (skipped if 1080 already present in manifest).
-	if !containsInt(heights, 1080) {
+	// 5. FHD probe (skipped if 1080 already present, or if the best
+	// available resolution is below 720p -- SD-only content never has
+	// hidden 1080p, and skipping saves a master playlist HTTP fetch).
+	if !containsInt(heights, 1080) && len(heights) > 0 && heights[0] >= 720 {
 		if bestHLS := pickBestHLSURL(streams.Video); bestHLS != "" {
 			_, found, err := p.fhdProber.ProbeHiddenFHD(probeCtx, bestHLS)
 			if err != nil {
