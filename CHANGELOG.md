@@ -5,6 +5,31 @@ All notable changes to iplayer-arr will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.3] - 2026-04-12
+
+### Fixed
+
+- **#27 Downloads marked completed when ffmpeg produces a truncated file**: older SD-only BBC content (e.g. The Catherine Tate Show at 704x396) was being downloaded as audio-only (~27MB) and marked as completed. Two root causes addressed:
+  - **FHD probe false positive on SD content**: `ProbeHiddenFHD` rewrote HLS variant URLs to `video=12000000` and HEAD-probed them. BBC's Unified Streaming Platform returns HTTP 200 for non-existent bitrates, generating a manifest with only the audio stream. Added a resolution guard: if the master playlist's max RESOLUTION height is below 720p, the HEAD probe is skipped and definitive absence is returned.
+  - **No post-download validation**: after ffmpeg exits 0, `processDownload` now stats the output file and compares it against the estimated size. If actual size is below 30% of expected, the download is failed with a new `FailCodeTruncated` error code and the partial file is removed. This catches all truncation causes (FHD false positives, CDN throttling, network interruptions).
+
+### Performance
+
+- **Quality probe skips FHD check for SD-only content**: `probeOne` now checks the mediaselector heights before calling `ProbeHiddenFHD`. If the best available height is below 720p, the FHD probe is skipped entirely, saving an HTTP round-trip per episode.
+- **Show-level probe deduplication**: `PrefetchPIDs` now groups items by ShowName and probes one representative PID per show. The result is reused for all siblings via cache writes, reducing BBC API calls from 3 per PID to 3 per show. A 200-episode show search drops from ~600 API calls to 3, cutting first-time search latency from ~120s to ~2-5s. Falls back to individual probing if the leader PID fails.
+
+### Tests
+
+- `TestMaxPlaylistHeight` unit test for the resolution guard helper.
+- `TestProbeHiddenFHD_SDOnlyPlaylist_ReturnsDefinitiveAbsence` verifies the HEAD probe is never called for SD-only master playlists.
+- `TestProbeHiddenFHD_720pPlaylist_StillProbes` verifies 720p+ content still gets the FHD probe.
+- `TestFailDownloadRetryability` extended with truncated-not-retryable case.
+- `TestPrefetch_ShowGroupDedup_ProbesOncePerShow` verifies one probe per show, not per PID.
+- `TestPrefetch_ShowGroupDedup_CacheHitCoversGroup` verifies zero HTTP calls when any sibling is cached.
+- `TestPrefetch_ShowGroupDedup_FirstFails_FallsBackToIndividual` verifies fallback on leader failure.
+- `TestPrefetch_ShowGroupDedup_AllFail_ReturnsNil` verifies nil result when every probe fails.
+- 227 Go tests pass across 8 packages.
+
 ## [1.1.2] - 2026-04-09
 
 ### Fixed
