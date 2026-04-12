@@ -52,6 +52,7 @@ docker run -d \
   -v iplayer-arr-config:/config \
   -v /path/to/downloads:/downloads \
   -e TZ=Europe/London \
+  -e PORT=62001 \
   ghcr.io/will-luck/iplayer-arr:latest
 ```
 
@@ -69,6 +70,7 @@ services:
       - /path/to/downloads:/downloads
     environment:
       - TZ=Europe/London
+      - PORT=62001  # must match the container-side port in ports: above
     restart: unless-stopped
 
 volumes:
